@@ -12,11 +12,13 @@ import random
 app = Flask(__name__)
 app.secret_key = "chennai_smartcity_2025"
 
+import os
+
 DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "Harsha@2005",   # ← Change this
-    "database": "chennai_pollution_db"
+    "host":     os.environ.get("DB_HOST", "localhost"),
+    "user":     os.environ.get("DB_USER", "root"),
+    "password": os.environ.get("DB_PASSWORD", "yourpassword"),
+    "database": os.environ.get("DB_NAME", "chennai_pollution_db")
 }
 
 # ── Safe limits per pollutant (WHO standards) ──────────────────
