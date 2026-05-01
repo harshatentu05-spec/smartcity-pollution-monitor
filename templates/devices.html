@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Devices — Chennai Pollution Monitor{% endblock %}
+{% block page_title %}Sensor Devices{% endblock %}
+{% block page_sub %}Station Registry{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Sensor Device Registry</h2>
+  <p>All Chennai monitoring stations with activity stats</p>
+</div>
+
+<div class="panel fade-in">
+  <div class="panel-head">
+    <div class="panel-title"><i class="fa-solid fa-microchip"></i> Registered Stations</div>
+    <span class="panel-meta">{{ all_devices | length }} devices across Chennai</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Device ID</th><th>Location</th><th>Total Logs</th>
+          <th>Avg Value</th><th>Last Active</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in all_devices %}
+        <tr>
+          <td><span class="mono">DEV-{{ d.DeviceID }}</span></td>
+          <td>
+            <i class="fa-solid fa-location-dot" style="color:var(--accent);margin-right:6px"></i>
+            <strong>{{ d.LocationName }}</strong>
+          </td>
+          <td>
+            <span style="color:var(--accent2);font-weight:600">{{ d.log_count or 0 }}</span>
+            <span style="color:var(--text3);font-size:.78rem"> readings</span>
+          </td>
+          <td>
+            {% if d.avg_val %}
+              <strong>{{ "%.2f"|format(d.avg_val) }}</strong>
+            {% else %}
+              <span style="color:var(--text3)">—</span>
+            {% endif %}
+          </td>
+          <td style="font-size:.78rem;color:var(--text3)">
+            {% if d.last_seen %}
+              {{ d.last_seen.strftime('%d %b %Y %H:%M') }}
+            {% else %}
+              Never
+            {% endif %}
+          </td>
+          <td><span class="badge badge-online"><i class="fa-solid fa-circle" style="font-size:.5rem"></i> Online</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">
+          <div class="empty-state">
+            <i class="fa-solid fa-server"></i>
+            <p>No devices registered.</p>
+          </div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- DEVICE MAP GRID -->
+<div class="panel fade-in">
+  <div class="panel-head">
+    <div class="panel-title"><i class="fa-solid fa-map"></i> Station Network — Chennai</div>
+  </div>
+  <div class="location-grid">
+    {% for d in all_devices %}
+    <div class="loc-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span class="mono" style="font-size:.75rem">DEV-{{ d.DeviceID }}</span>
+        <span class="badge badge-online" style="font-size:.62rem">● Online</span>
+      </div>
+      <div class="loc-name">{{ d.LocationName }}</div>
+      <div style="margin-top:8px;display:flex;gap:12px">
+        <div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--text)">{{ d.log_count or 0 }}</div>
+          <div class="loc-type">Logs</div>
+        </div>
+        {% if d.avg_val %}
+        <div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">{{ "%.1f"|format(d.avg_val) }}</div>
+          <div class="loc-type">Avg Value</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

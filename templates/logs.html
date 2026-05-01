@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Sensor Logs — Chennai Pollution Monitor{% endblock %}
+{% block page_title %}Sensor Logs{% endblock %}
+{% block page_sub %}All Readings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Sensor Logs</h2>
+  <p>All pollution readings with risk scores, trend analysis and AI-like prediction</p>
+</div>
+
+<!-- ADD LOG FORM -->
+<div class="panel fade-in">
+  <div class="panel-head">
+    <div class="panel-title"><i class="fa-solid fa-plus-circle"></i> Add New Sensor Reading</div>
+    <span class="panel-tag">Auto-alerts generated on save</span>
+  </div>
+  <div style="padding:20px">
+    <form method="POST" action="{{ url_for('add_alert') }}">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr) auto;gap:14px;align-items:end">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Sensor Device</label>
+          <select name="device_id" class="form-select" required>
+            <option value="" disabled selected>Select station...</option>
+            {% for d in devices %}
+            <option value="{{ d.DeviceID }}">DEV-{{ d.DeviceID }} — {{ d.LocationName }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Pollutant Type</label>
+          <select name="pollution_type" class="form-select" required>
+            <option value="" disabled selected>Select pollutant...</option>
+            {% for p in pollutants %}
+            <option value="{{ p }}">{{ p }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Value Reading</label>
+          <input type="number" step="0.01" name="value" class="form-control" placeholder="e.g. 78.5" required/>
+        </div>
+        <button type="submit" class="btn-primary">
+          <i class="fa-solid fa-satellite-dish"></i> Log Reading
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- LOGS TABLE -->
+<div class="panel fade-in">
+  <div class="panel-head">
+    <div class="panel-title"><i class="fa-solid fa-wave-square"></i> All Sensor Readings</div>
+    <span class="panel-meta">{{ all_logs | length }} total entries</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Log ID</th>
+          <th>Location</th>
+          <th>Pollutant</th>
+          <th>Value</th>
+          <th>Safe Limit</th>
+          <th>Score</th>
+          <th>Risk</th>
+          <th>Trend</th>
+          <th>Prediction</th>
+          <th>Health Impact</th>
+          <th>Logged At</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in all_logs %}
+        {% set safe = {'CO2':400,'NO2':40,'PM2.5':25,'SO2':20,'CO':10}.get(log.PollutionType, 100) %}
+        <tr>
+          <td><span class="mono">#{{ log.LogID }}</span></td>
+          <td>
+            <span style="font-size:.8rem">
+              <i class="fa-solid fa-location-pin" style="color:var(--accent);margin-right:4px"></i>
+              {{ log.LocationName }}
+            </span>
+          </td>
+          <td><span class="mono">{{ log.PollutionType }}</span></td>
+          <td><strong style="font-size:.95rem">{{ log.Value }}</strong></td>
+          <td style="color:var(--text3);font-size:.8rem">{{ safe }}</td>
+          <td>
+            <div class="score-bar-wrap">
+              <div class="score-bar">
+                <div class="score-fill" style="
+                  width: {{ [log.score, 200] | min }}%;
+                  background: {{ '#ef4444' if log.score > 200 else '#f97316' if log.score > 150 else '#f59e0b' if log.score > 100 else '#00d4a8' }}
+                "></div>
+              </div>
+              <span class="score-num">{{ log.score }}</span>
+            </div>
+          </td>
+          <td><span class="badge badge-{{ log.risk | lower }}">{{ log.risk }}</span></td>
+          <td>
+            {% if log.trend == 'Increasing' %}
+              <span class="badge badge-trend-up"><i class="fa-solid fa-arrow-trend-up"></i> Rising</span>
+            {% elif log.trend == 'Decreasing' %}
+              <span class="badge badge-trend-dn"><i class="fa-solid fa-arrow-trend-down"></i> Falling</span>
+            {% else %}
+              <span class="badge badge-trend-st"><i class="fa-solid fa-minus"></i> Stable</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if log.prediction == 'Critical Soon' %}
+              <span class="badge badge-pred-critical"><i class="fa-solid fa-circle-exclamation"></i> Critical Soon</span>
+            {% elif log.prediction == 'Improving' %}
+              <span class="badge badge-pred-imp"><i class="fa-solid fa-circle-check"></i> Improving</span>
+            {% else %}
+              <span class="badge badge-pred-stable"><i class="fa-solid fa-circle-minus"></i> Stable</span>
+            {% endif %}
+          </td>
+          <td style="font-size:.75rem;color:var(--text3);max-width:160px">{{ log.health }}</td>
+          <td style="font-size:.75rem;color:var(--text3);white-space:nowrap">
+            {{ log.logged_time.strftime('%d %b %H:%M') if log.logged_time else '—' }}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="11">
+          <div class="empty-state">
+            <i class="fa-solid fa-inbox"></i>
+            <p>No sensor logs found. Add a reading above.</p>
+          </div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Chennai Pollution Monitor{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}Real-time Overview{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Pollution Monitor Dashboard</h2>
+  <p>Live environmental intelligence across 8 Chennai monitoring stations</p>
+</div>
+
+<!-- ── STAT CARDS ── -->
+<div class="stats-grid">
+  <div class="stat-card c-green fade-in">
+    <div class="stat-icon"><i class="fa-solid fa-microchip"></i></div>
+    <div class="stat-num">{{ total_devices }}</div>
+    <div class="stat-label">Active Devices</div>
+    <div class="stat-sub">Chennai stations online</div>
+  </div>
+  <div class="stat-card c-blue fade-in">
+    <div class="stat-icon"><i class="fa-solid fa-database"></i></div>
+    <div class="stat-num">{{ total_logs }}</div>
+    <div class="stat-label">Sensor Readings</div>
+    <div class="stat-sub">Total log entries</div>
+  </div>
+  <div class="stat-card c-warn fade-in">
+    <div class="stat-icon"><i class="fa-solid fa-bell"></i></div>
+    <div class="stat-num">{{ total_alerts }}</div>
+    <div class="stat-label">Risk Alerts</div>
+    <div class="stat-sub">Auto-generated</div>
+  </div>
+  <div class="stat-card c-danger fade-in">
+    <div class="stat-icon"><i class="fa-solid fa-skull-crossbones"></i></div>
+    <div class="stat-num">{{ critical }}</div>
+    <div class="stat-label">Critical Alerts</div>
+    <div class="stat-sub">Immediate attention</div>
+  </div>
+</div>
+
+<!-- ── LOCATION OVERVIEW ── -->
+{% if location_stats %}
+<div class="panel fade-in">
+  <div class="panel-head">
+    <div class="panel-title"><i class="fa-solid fa-map-location-dot"></i> Chennai Station Overview</div>
+    <span class="panel-tag">Live readings</span>
+  </div>
+  <div class="location-grid">
+    {% for ls in location_stats %}
+    {% set risk_val = (ls.avg_val / {'CO2':400,'NO2':40,'PM2.5':25,'SO2':20,'CO':10}.get(ls.PollutionType, 100)) %}
+    <div class="loc-card">
+      <div class="loc-name"><i class="fa-solid fa-location-pin" style="color:var(--accent);margin-right:4px"></i>{{ ls.LocationName }}</div>
+      <div class="loc-val">{{ "%.1f"|format(ls.avg_val) }}</div>
+      <div class="loc-type">{{ ls.PollutionType }}
+        {% if risk_val > 2 %}
+          <span class="badge badge-critical" style="margin-left:4px">Critical</span>
+        {% elif risk_val > 1.5 %}
+          <span class="badge badge-high" style="margin-left:4px">High</span>
+        {% elif risk_val > 1 %}
+          <span class="badge badge-medium" style="margin-left:4px">Medium</span>
+        {% else %}
+          <span class="badge badge-safe" style="margin-left:4px">Safe</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ── LATEST LOGS + ALERTS ── -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+
+  <!-- Latest Logs -->
+  <div class="panel fade-in">
+    <div class="panel-head">
+      <div class="panel-title"><i class="fa-solid fa-wave-square"></i> Latest Sensor Logs</div>
+      <span class="panel-meta">Last 5 readings</span>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>Location</th><th>Type</th><th>Value</th><th>Risk</th></tr></thead>
+      <tbody>
+        {% for log in latest_logs %}
+        <tr>
+          <td style="font-size:.8rem">{{ log.LocationName }}</td>
+          <td><span class="mono">{{ log.PollutionType }}</span></td>
+          <td><strong>{{ log.Value }}</strong></td>
+          <td>
+            <span class="badge badge-{{ log.risk | lower }}">{{ log.risk }}</span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No logs yet</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Recent Alerts -->
+  <div class="panel fade-in">
+    <div class="panel-head">
+      <div class="panel-title"><i class="fa-solid fa-triangle-exclamation"></i> Recent Alerts</div>
+      <span class="panel-meta">Auto-detected</span>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>Level</th><th>Location</th><th>Type</th><th>Time</th></tr></thead>
+      <tbody>
+        {% for alert in recent_alerts %}
+        <tr>
+          <td><span class="badge badge-{{ alert.AlertLevel | lower }}">{{ alert.AlertLevel }}</span></td>
+          <td style="font-size:.8rem">{{ alert.LocationName }}</td>
+          <td><span class="mono">{{ alert.PollutionType }}</span></td>
+          <td style="font-size:.74rem;color:var(--text3)">{{ alert.logged_time.strftime('%H:%M') if alert.logged_time else '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4"><div class="empty-state"><i class="fa-solid fa-shield-halved"></i><p>All clear</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ── MINI CHART ── -->
+<div class="panel fade-in" style="margin-top:18px">
+  <div class="panel-head">
+    <div class="panel-title"><i class="fa-solid fa-chart-bar"></i> Pollution Score by Station</div>
+    <span class="panel-tag">Score = (value / safe_limit) × 100</span>
+  </div>
+  <div class="chart-wrap">
+    <canvas id="dashChart"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ctx = document.getElementById('dashChart').getContext('2d');
+const labels = {{ location_stats | map(attribute='LocationName') | list | tojson }};
+const vals   = {{ location_stats | map(attribute='avg_val') | list | tojson }};
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'Avg Pollution Value',
+      data: vals,
+      backgroundColor: vals.map(v => v > 60 ? 'rgba(239,68,68,.7)' : v > 40 ? 'rgba(249,115,22,.7)' : 'rgba(0,212,168,.6)'),
+      borderRadius: 6, borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(1)}` } } },
+    scales: {
+      x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#1e2d42' } },
+      y: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#1e2d42' } }
+    }
+  }
+});
+
+// Auto-refresh stats every 15s
+setInterval(() => {
+  fetch('/api/stats').then(r=>r.json()).then(d=>{
+    // Could update DOM counters here if needed
+  });
+}, 15000);
+</script>
+{% endblock %}

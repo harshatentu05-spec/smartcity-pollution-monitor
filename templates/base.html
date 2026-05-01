@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>{% block title %}Chennai Pollution Monitor{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static',filename='css/style.css') }}"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ── SIDEBAR ───────────────────────────────────────────── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon"><i class="fa-solid fa-satellite-dish"></i></div>
+    <div class="brand-text">
+      <div class="brand-name">Chennai Monitor</div>
+      <div class="brand-sub">● Smart City v2.0</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section">Main</div>
+    <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}">
+      <i class="fa-solid fa-gauge-high"></i> Dashboard
+    </a>
+    <a href="{{ url_for('logs') }}" class="nav-link {% if request.endpoint=='logs' %}active{% endif %}">
+      <i class="fa-solid fa-wave-square"></i> Sensor Logs
+    </a>
+    <a href="{{ url_for('alerts') }}" class="nav-link {% if request.endpoint=='alerts' %}active{% endif %}">
+      <i class="fa-solid fa-triangle-exclamation"></i> Alerts
+      {% if critical and critical > 0 %}
+        <span class="nav-badge">{{ critical }}</span>
+      {% endif %}
+    </a>
+
+    <div class="nav-section">Station</div>
+    <a href="{{ url_for('devices') }}" class="nav-link {% if request.endpoint=='devices' %}active{% endif %}">
+      <i class="fa-solid fa-microchip"></i> Devices
+    </a>
+    <a href="{{ url_for('analytics') }}" class="nav-link {% if request.endpoint=='analytics' %}active{% endif %}">
+      <i class="fa-solid fa-chart-line"></i> Analytics
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="live-indicator"><div class="pulse"></div> Live Monitoring Active</div>
+    <div style="margin-top:6px;color:var(--text3)">Chennai, Tamil Nadu<br>Smart City Platform</div>
+  </div>
+</aside>
+
+<!-- ── TOPBAR ─────────────────────────────────────────────── -->
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <div>
+      <div class="page-title">{% block page_title %}Dashboard{% endblock %}</div>
+      <div class="breadcrumb">Chennai Smart City / <span>{% block page_sub %}Overview{% endblock %}</span></div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="top-badge city"><i class="fa-solid fa-location-dot"></i> Chennai, TN</div>
+    <div class="top-badge live"><div class="pulse"></div> Live</div>
+  </div>
+</header>
+
+<!-- ── FLASH MESSAGES ─────────────────────────────────────── -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrap">
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">
+          <i class="fa-solid fa-{{ 'circle-check' if cat=='success' else 'circle-xmark' }}"></i> {{ msg }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<!-- ── MAIN CONTENT ───────────────────────────────────────── -->
+<main class="main">
+  {% block content %}{% endblock %}
+</main>
+
+<script>
+  // Auto-dismiss flash
+  setTimeout(() => {
+    document.querySelectorAll('.flash').forEach(el => {
+      el.style.transition = 'opacity .4s'; el.style.opacity = '0';
+      setTimeout(() => el.remove(), 400);
+    });
+  }, 3500);
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

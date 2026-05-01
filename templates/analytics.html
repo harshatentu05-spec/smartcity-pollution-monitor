@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Analytics — Chennai Pollution Monitor{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+{% block page_sub %}Visual Intelligence{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Pollution Analytics</h2>
+  <p>Visual insights — location trends, pollutant comparison, risk distribution</p>
+</div>
+
+<!-- TOP ROW: Location bar + Pollutant radar -->
+<div style="display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-bottom:18px">
+
+  <div class="panel fade-in">
+    <div class="panel-head">
+      <div class="panel-title"><i class="fa-solid fa-chart-bar"></i> Avg Pollution by Location</div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="locationChart"></canvas>
+    </div>
+  </div>
+
+  <div class="panel fade-in">
+    <div class="panel-head">
+      <div class="panel-title"><i class="fa-solid fa-chart-pie"></i> Risk Distribution</div>
+    </div>
+    <div class="chart-wrap" style="display:flex;align-items:center;justify-content:center">
+      <canvas id="riskChart" style="max-height:230px;max-width:230px"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- SECOND ROW: Pollutant comparison + Pollution index -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+
+  <div class="panel fade-in">
+    <div class="panel-head">
+      <div class="panel-title"><i class="fa-solid fa-vials"></i> Pollutant Comparison</div>
+      <span class="panel-tag">Avg / Max / Min</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="pollutantChart"></canvas>
+    </div>
+  </div>
+
+  <div class="panel fade-in">
+    <div class="panel-head">
+      <div class="panel-title"><i class="fa-solid fa-gauge"></i> Pollution Index by Station</div>
+      <span class="panel-tag">Score = (val/limit)×100</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="indexChart"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- STATS TABLE -->
+<div class="panel fade-in">
+  <div class="panel-head">
+    <div class="panel-title"><i class="fa-solid fa-table"></i> Pollutant Statistics</div>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr><th>Pollutant</th><th>Safe Limit</th><th>Avg Reading</th><th>Max Reading</th><th>Min Reading</th><th>Avg Score</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for p in by_pollutant %}
+      {% set limit = {'CO2':400,'NO2':40,'PM2.5':25,'SO2':20,'CO':10}.get(p.PollutionType, 100) %}
+      {% set score = (p.avg_val / limit * 100) | round(1) %}
+      <tr>
+        <td><span class="mono">{{ p.PollutionType }}</span></td>
+        <td style="color:var(--text3)">{{ limit }}</td>
+        <td><strong>{{ "%.2f"|format(p.avg_val) }}</strong></td>
+        <td style="color:var(--danger)">{{ "%.2f"|format(p.max_val) }}</td>
+        <td style="color:var(--accent)">{{ "%.2f"|format(p.min_val) }}</td>
+        <td>
+          <div class="score-bar-wrap">
+            <div class="score-bar">
+              <div class="score-fill" style="
+                width:{{ [score,200]|min }}%;
+                background:{{ '#ef4444' if score>200 else '#f97316' if score>150 else '#f59e0b' if score>100 else '#00d4a8' }}
+              "></div>
+            </div>
+            <span class="score-num">{{ score }}</span>
+          </div>
+        </td>
+        <td>
+          {% if score > 200 %}<span class="badge badge-critical">Critical</span>
+          {% elif score > 150 %}<span class="badge badge-high">High</span>
+          {% elif score > 100 %}<span class="badge badge-medium">Medium</span>
+          {% else %}<span class="badge badge-safe">Safe</span>{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-chart-simple"></i><p>No data available</p></div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CHART_DEFAULTS = {
+  color: '#94a3b8',
+  grid:  '#1e2d42',
+  font:  { family: 'Space Grotesk', size: 11 }
+};
+
+// 1. Location bar chart
+const locLabels = {{ by_location | map(attribute='LocationName') | list | tojson }};
+const locVals   = {{ by_location | map(attribute='avg_val') | list | tojson }};
+new Chart(document.getElementById('locationChart'), {
+  type: 'bar',
+  data: {
+    labels: locLabels,
+    datasets: [{
+      label: 'Avg Value',
+      data: locVals,
+      backgroundColor: locVals.map(v => v > 60 ? 'rgba(239,68,68,.75)' : v > 40 ? 'rgba(249,115,22,.75)' : v > 25 ? 'rgba(245,158,11,.75)' : 'rgba(0,212,168,.65)'),
+      borderRadius: 6, borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font, maxRotation: 30 }, grid: { color: CHART_DEFAULTS.grid } },
+      y: { ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font }, grid: { color: CHART_DEFAULTS.grid } }
+    }
+  }
+});
+
+// 2. Risk pie chart
+const riskData = {{ risk_dist | tojson }};
+const riskLabels = Object.keys(riskData);
+const riskVals   = Object.values(riskData);
+const riskColors = { Critical:'#ef4444', High:'#f97316', Medium:'#f59e0b', Low:'#22c55e' };
+new Chart(document.getElementById('riskChart'), {
+  type: 'doughnut',
+  data: {
+    labels: riskLabels,
+    datasets: [{
+      data: riskVals,
+      backgroundColor: riskLabels.map(l => riskColors[l] || '#64748b'),
+      borderWidth: 2, borderColor: '#0d1320',
+      hoverOffset: 8
+    }]
+  },
+  options: {
+    responsive: true, cutout: '68%',
+    plugins: {
+      legend: { position: 'bottom', labels: { color: '#94a3b8', font: CHART_DEFAULTS.font, padding: 14 } }
+    }
+  }
+});
+
+// 3. Pollutant comparison bar
+const pLabels  = {{ by_pollutant | map(attribute='PollutionType') | list | tojson }};
+const pAvg     = {{ by_pollutant | map(attribute='avg_val') | list | tojson }};
+const pMax     = {{ by_pollutant | map(attribute='max_val') | list | tojson }};
+const pMin     = {{ by_pollutant | map(attribute='min_val') | list | tojson }};
+new Chart(document.getElementById('pollutantChart'), {
+  type: 'bar',
+  data: {
+    labels: pLabels,
+    datasets: [
+      { label: 'Avg', data: pAvg, backgroundColor: 'rgba(0,212,168,.7)',    borderRadius: 4 },
+      { label: 'Max', data: pMax, backgroundColor: 'rgba(239,68,68,.65)',   borderRadius: 4 },
+      { label: 'Min', data: pMin, backgroundColor: 'rgba(59,130,246,.65)',  borderRadius: 4 },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { color: '#94a3b8', font: CHART_DEFAULTS.font } } },
+    scales: {
+      x: { ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font }, grid: { color: CHART_DEFAULTS.grid } },
+      y: { ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font }, grid: { color: CHART_DEFAULTS.grid } }
+    }
+  }
+});
+
+// 4. Pollution index horizontal bar
+const idxLabels = {{ location_scores.keys() | list | tojson }};
+const idxVals   = {{ location_scores.values() | list | tojson }};
+new Chart(document.getElementById('indexChart'), {
+  type: 'bar',
+  data: {
+    labels: idxLabels,
+    datasets: [{
+      label: 'Pollution Index Score',
+      data: idxVals,
+      backgroundColor: idxVals.map(v => v > 200 ? 'rgba(239,68,68,.75)' : v > 150 ? 'rgba(249,115,22,.75)' : v > 100 ? 'rgba(245,158,11,.75)' : 'rgba(0,212,168,.65)'),
+      borderRadius: 5, borderSkipped: false,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font }, grid: { color: CHART_DEFAULTS.grid } },
+      y: { ticks: { color: CHART_DEFAULTS.color, font: CHART_DEFAULTS.font }, grid: { color: CHART_DEFAULTS.grid } }
+    }
+  }
+});
+</script>
+{% endblock %}

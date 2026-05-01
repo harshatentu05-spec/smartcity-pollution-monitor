@@ -1,0 +1,21 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment variables (keep DB password safe)
+.env
+
+# IntelliJ / IDE files
+.idea/
+*.iml
+shelf/
+workspace.xml
+mavenHomeManager.xml
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Alerts — Chennai Pollution Monitor{% endblock %}
+{% block page_title %}Risk Alerts{% endblock %}
+{% block page_sub %}Severity Monitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Risk Alert Center</h2>
+  <p>Auto-generated alerts sorted by severity — critical first</p>
+</div>
+
+<!-- ALERT COUNTS -->
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+  <div class="stat-card c-danger fade-in">
+    <div class="stat-icon"><i class="fa-solid fa-skull-crossbones"></i></div>
+    <div class="stat-num">{{ counts.Critical }}</div>
+    <div class="stat-label">Critical</div>
+  </div>
+  <div class="stat-card c-orange fade-in">
+    <div class="stat-icon"><i class="fa-solid fa-fire"></i></div>
+    <div class="stat-num">{{ counts.High }}</div>
+    <div class="stat-label">High</div>
+  </div>
+  <div class="stat-card c-warn fade-in">
+    <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <div class="stat-num">{{ counts.Medium }}</div>
+    <div class="stat-label">Medium</div>
+  </div>
+  <div class="stat-card c-green fade-in">
+    <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+    <div class="stat-num">{{ counts.Low }}</div>
+    <div class="stat-label">Low</div>
+  </div>
+</div>
+
+<!-- ADD READING FORM -->
+<div class="panel fade-in">
+  <div class="panel-head">
+    <div class="panel-title"><i class="fa-solid fa-plus-circle"></i> Insert Sensor Reading (Auto-Alert)</div>
+    <span class="panel-tag">Risk auto-calculated</span>
+  </div>
+  <div style="padding:20px">
+    <form method="POST" action="{{ url_for('add_alert') }}">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Sensor Device</label>
+          <select name="device_id" class="form-select" required>
+            <option value="" disabled selected>Select station...</option>
+            {% for i in range(1,9) %}
+            <option value="{{ i }}">DEV-{{ i }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Pollutant</label>
+          <select name="pollution_type" class="form-select" required>
+            <option value="" disabled selected>Select...</option>
+            <option>CO2</option><option>NO2</option>
+            <option>PM2.5</option><option>SO2</option><option>CO</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Value</label>
+          <input type="number" step="0.01" name="value" class="form-control" placeholder="e.g. 95.0" required/>
+        </div>
+      </div>
+      <button type="submit" class="btn-primary">
+        <i class="fa-solid fa-satellite-dish"></i> Submit Reading
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- HEALTH IMPACT REFERENCE -->
+<div class="panel fade-in">
+  <div class="panel-head">
+    <div class="panel-title"><i class="fa-solid fa-heart-pulse"></i> Health Impact Reference</div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0">
+    {% for p, impact in health_impact.items() %}
+    <div style="padding:14px 16px;border-right:1px solid var(--border)">
+      <div style="font-size:.78rem;font-weight:700;color:var(--accent);margin-bottom:4px">{{ p }}</div>
+      <div style="font-size:.75rem;color:var(--text2)">{{ impact }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ALL ALERTS TABLE -->
+<div class="panel fade-in">
+  <div class="panel-head">
+    <div class="panel-title"><i class="fa-solid fa-triangle-exclamation"></i> All Alerts</div>
+    <span class="panel-meta">{{ all_alerts | length }} total — sorted by severity</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Alert ID</th><th>Severity</th><th>Location</th>
+          <th>Pollutant</th><th>Value</th><th>Message</th><th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in all_alerts %}
+        <tr>
+          <td><span class="mono">#{{ a.AlertID }}</span></td>
+          <td><span class="badge badge-{{ a.AlertLevel | lower }}">
+            {% if a.AlertLevel == 'Critical' %}<i class="fa-solid fa-skull-crossbones"></i>
+            {% elif a.AlertLevel == 'High' %}<i class="fa-solid fa-fire"></i>
+            {% elif a.AlertLevel == 'Medium' %}<i class="fa-solid fa-triangle-exclamation"></i>
+            {% else %}<i class="fa-solid fa-circle-info"></i>{% endif %}
+            {{ a.AlertLevel }}
+          </span></td>
+          <td style="font-size:.82rem"><i class="fa-solid fa-location-pin" style="color:var(--accent);margin-right:4px"></i>{{ a.LocationName }}</td>
+          <td><span class="mono">{{ a.PollutionType }}</span></td>
+          <td><strong>{{ a.Value }}</strong></td>
+          <td style="font-size:.78rem;color:var(--text2);max-width:220px">{{ a.AlertMessage }}</td>
+          <td style="font-size:.74rem;color:var(--text3);white-space:nowrap">
+            {{ a.logged_time.strftime('%d %b %H:%M') if a.logged_time else '—' }}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">
+          <div class="empty-state">
+            <i class="fa-solid fa-shield-halved"></i>
+            <p>No alerts — all stations within safe limits!</p>
+          </div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
