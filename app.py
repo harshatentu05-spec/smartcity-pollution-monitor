@@ -12,15 +12,16 @@ import random
 app = Flask(__name__)
 app.secret_key = "chennai_smartcity_2025"
 
+
 import os
 
 DB_CONFIG = {
     "host":     os.environ.get("DB_HOST", "localhost"),
     "user":     os.environ.get("DB_USER", "root"),
-    "password": os.environ.get("DB_PASSWORD", "yourpassword"),
-    "database": os.environ.get("DB_NAME", "chennai_pollution_db")
+    "password": os.environ.get("DB_PASSWORD", "Harsha@2005"),
+    "database": os.environ.get("DB_NAME", "chennai_pollution_db"),
+    "port":     int(os.environ.get("DB_PORT", 3306))
 }
-
 # ── Safe limits per pollutant (WHO standards) ──────────────────
 SAFE_LIMITS = {
     "CO2":   400.0,
